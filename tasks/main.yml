@@ -1,0 +1,52 @@
+---
+# tasks file for run-sql-postgres
+- name: install postgres
+  apt:
+    update_cache: yes
+    name: ['postgresql', 'postgresql-contrib']
+    state: present
+  
+- name: ensure psycopg2
+  apt:
+    name: python-psycopg2
+
+- name: ensure testing database created
+  postgresql_db:
+    name: testdb # required. name of the database to add or remove
+  become_user: postgres
+
+
+# first method
+- name: dump a database file
+  copy:
+    dest: /etc/migrate.sql
+    src: migrate.sql
+  register: sql_file_path
+
+- name: run custom sql script
+  command: "psql postgres -f {{ sql_file_path.dest }}"
+  become_user: postgres
+  register: sql_response_file
+
+- name: debug response
+  debug:
+    var: sql_response_file
+
+# second method
+- name: load sql into variable
+  set_fact:
+    migrate_sql: "{{ lookup('file', 'migrate.sql') }}"
+
+- name: debug variable
+  debug:
+    var: migrate_sql
+
+- name: run custom script from variable
+  command: psql postgres -c "{{ migrate_sql }}"
+  become_user: postgres
+  register: sql_response_variable
+
+- name:
+  debug:
+    var: sql_response_variable
+
